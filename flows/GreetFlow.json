@@ -1,0 +1,324 @@
+{
+	"schemaVersion": "4",
+	"info": {
+		"name": "Greet flow",
+		"description": "Greets a user",
+		"author": "support@axway.com",
+		"license": "ISC"
+	},
+	"parameter": {
+		"properties": {
+			"params": {
+				"type": "object",
+				"description": "The parameters from the endpoint.",
+				"properties": {
+					"username": {
+						"type": "string",
+						"description": "The username"
+					}
+				},
+				"additionalProperties": false,
+				"required": [
+					"username"
+				]
+			},
+			"request": {
+				"type": "object",
+				"description": "The HTTP request."
+			},
+			"config": {
+				"type": "object",
+				"description": "The service's configuration"
+			},
+			"env": {
+				"type": "object",
+				"description": "The host OS environment"
+			}
+		},
+		"additionalProperties": false,
+		"required": [
+			"params",
+			"request",
+			"config",
+			"env"
+		]
+	},
+	"start": "mustache.2",
+	"nodes": {
+		"response.success": {
+			"type": "nodehandler://axway-flow/http",
+			"name": "Success (HTTP 200)",
+			"method": "setresponse",
+			"parameters": [
+				{
+					"name": "status",
+					"value": "200",
+					"type": "number",
+					"metaName": "Status",
+					"metaDescription": "The HTTP status code"
+				},
+				{
+					"name": "body",
+					"value": "$.greeting",
+					"metaName": "Body",
+					"metaDescription": "The response payload"
+				}
+			],
+			"outputs": {
+				"next": {
+					"context": "$.response",
+					"metaName": "Next"
+				}
+			},
+			"metaMethod": "Set HTTP Response"
+		},
+		"response.error": {
+			"type": "nodehandler://axway-flow/http",
+			"name": "Bad Request (HTTP 400)",
+			"method": "setresponse",
+			"parameters": [
+				{
+					"name": "status",
+					"value": "400",
+					"type": "number",
+					"metaName": "Status",
+					"metaDescription": "The HTTP status code"
+				}
+			],
+			"outputs": {
+				"next": {
+					"context": "$.response",
+					"metaName": "Next"
+				}
+			},
+			"metaMethod": "Set HTTP Response"
+		},
+		"mustache.1": {
+			"type": "nodehandler://@axway/api-builder-plugin-fn-mustache/mustache",
+			"name": "Format string",
+			"method": "format",
+			"parameters": [
+				{
+					"name": "template",
+					"type": "string",
+					"value": "\"{{data.config.helloworld.salutation}} {{data.params.username}}\"",
+					"metaName": "Template",
+					"metaDescription": "The Mustache template. e.g. `Hi {{data.user}}`."
+				},
+				{
+					"name": "data",
+					"type": "jsonpath",
+					"value": "$",
+					"metaName": "Data",
+					"metaDescription": "The value to assign to the \"data\" variable in the template."
+				}
+			],
+			"outputs": {
+				"next": {
+					"context": "$.greeting",
+					"routes": [
+						"response.success"
+					],
+					"metaName": "Next"
+				},
+				"error": {
+					"context": "$.error",
+					"routes": [
+						"response.error"
+					],
+					"metaName": "Error"
+				}
+			},
+			"metaMethod": "Format string"
+		},
+		"condition.1": {
+			"type": "nodehandler://axway-flow/condition",
+			"name": "Check Username",
+			"method": "exists",
+			"parameters": [
+				{
+					"name": "source",
+					"value": "$.params.username",
+					"metaName": "Source",
+					"metaDescription": "The input to test."
+				}
+			],
+			"outputs": {
+				"true": {
+					"context": "$.exists",
+					"routes": [
+						"mustache.1"
+					],
+					"metaName": "True"
+				},
+				"false": {
+					"context": "$.exists",
+					"routes": [
+						"response.error"
+					],
+					"metaName": "False"
+				}
+			},
+			"metaMethod": "Exists"
+		},
+		"xml-node.1": {
+			"type": "nodehandler://@axway-api-builder-ext/api-builder-plugin-fn-xml-node/xml-node",
+			"name": "XML to JSON",
+			"method": "xml2json",
+			"parameters": [
+				{
+					"name": "xmlData",
+					"type": "jsonpath",
+					"value": "$.response.body",
+					"metaName": "XML Input data",
+					"metaDescription": "XML Data. For instance: $.soapResponse.body"
+				},
+				{
+					"name": "selectPath",
+					"type": "string",
+					"value": "\"$[\\\"soap:Envelope\\\"][\\\"soap:Body\\\"]\"",
+					"metaName": "Select object with path",
+					"metaDescription": "The object within the returned structure with this path is returned. Example: $[\"soap:Envelope\"][\"soap:Body\"]"
+				}
+			],
+			"outputs": {
+				"next": {
+					"context": "$.jsonData",
+					"routes": [
+						"http.1"
+					],
+					"metaName": "Next"
+				},
+				"error": {
+					"context": "$.error",
+					"routes": [],
+					"metaName": "Error"
+				}
+			},
+			"metaMethod": "XML to JSON"
+		},
+		"rest.1": {
+			"type": "nodehandler://@axway/api-builder-plugin-fn-restclient/rest",
+			"name": "POST",
+			"method": "post",
+			"parameters": [
+				{
+					"name": "body",
+					"type": "jsonpath",
+					"value": "$.value",
+					"metaName": "Body",
+					"metaDescription": "The content to send."
+				},
+				{
+					"name": "url",
+					"type": "string",
+					"value": "\"http://www.dneonline.com/calculator.asmx\"",
+					"metaName": "URL",
+					"metaDescription": "The target URL."
+				},
+				{
+					"name": "headers",
+					"type": "object",
+					"value": "{\n  \t\"Content-Type\": \"text/xml; charset=utf-8\",\n\t\"SOAPAction\": \"http://tempuri.org/Add\"\n\n}",
+					"metaName": "Headers",
+					"metaDescription": "The HTTP headers to set."
+				}
+			],
+			"outputs": {
+				"2xx": {
+					"routes": [
+						"xml-node.1"
+					],
+					"context": "$.response",
+					"metaName": "2XX"
+				},
+				"3xx": {
+					"routes": [],
+					"context": "$.response",
+					"metaName": "3XX"
+				},
+				"4xx": {
+					"routes": [],
+					"context": "$.response",
+					"metaName": "4XX"
+				},
+				"5xx": {
+					"routes": [],
+					"context": "$.response",
+					"metaName": "5XX"
+				},
+				"error": {
+					"routes": [],
+					"context": "$.error",
+					"metaName": "Error"
+				}
+			},
+			"metaMethod": "POST"
+		},
+		"mustache.2": {
+			"type": "nodehandler://@axway/api-builder-plugin-fn-mustache/mustache",
+			"name": "Format string",
+			"method": "format",
+			"parameters": [
+				{
+					"name": "data",
+					"type": "jsonpath",
+					"value": "$",
+					"metaName": "Data",
+					"metaDescription": "The value to assign to the \"data\" variable in the template."
+				},
+				{
+					"name": "template",
+					"type": "string",
+					"value": "\"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\"?>\\n<soap:Envelope xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\" xmlns:xsd=\\\"http://www.w3.org/2001/XMLSchema\\\" xmlns:soap=\\\"http://schemas.xmlsoap.org/soap/envelope/\\\">\\n  <soap:Body>\\n    <Add xmlns=\\\"http://tempuri.org/\\\">\\n      <intA>1</intA>\\n      <intB>2</intB>\\n    </Add>\\n  </soap:Body>\\n</soap:Envelope>\"",
+					"metaName": "Template",
+					"metaDescription": "The Mustache template. e.g. `Hi {{data.user}}`."
+				}
+			],
+			"outputs": {
+				"next": {
+					"context": "$.value",
+					"routes": [
+						"rest.1"
+					],
+					"metaName": "Next"
+				},
+				"error": {
+					"context": "$.error",
+					"routes": [],
+					"metaName": "Error"
+				}
+			},
+			"metaMethod": "Format string"
+		},
+		"http.1": {
+			"type": "nodehandler://axway-flow/http",
+			"name": "Set HTTP Response",
+			"method": "setresponse",
+			"parameters": [
+				{
+					"name": "status",
+					"type": "number",
+					"value": "200",
+					"metaName": "Status",
+					"metaDescription": "The HTTP status code"
+				},
+				{
+					"name": "body",
+					"type": "jsonpath",
+					"value": "$.jsonData",
+					"metaName": "Body",
+					"metaDescription": "The response payload"
+				}
+			],
+			"outputs": {
+				"next": {
+					"context": "$.response",
+					"routes": [],
+					"metaName": "Next"
+				}
+			},
+			"metaMethod": "Set HTTP Response"
+		}
+	}
+}
