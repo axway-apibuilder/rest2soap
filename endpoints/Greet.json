@@ -6,29 +6,20 @@
 	"info": {
 		"description": "Greeting functions",
 		"version": "1.0.0",
-		"title": "Greeting API"
+		"title": "Calculator Web Service"
 	},
 	"paths": {
-		"/greet": {
+		"/calculate": {
 			"get": {
 				"x-flow": "GreetFlow",
 				"description": "",
-				"operationId": "Greet",
-				"parameters": [
-					{
-						"description": "The username",
-						"in": "query",
-						"name": "username",
-						"required": true,
-						"type": "string"
-					}
-				],
+				"operationId": "Calculator",
 				"produces": [
 					"application/json"
 				],
 				"responses": {
 					"200": {
-						"description": "greeting",
+						"description": "results",
 						"schema": {
 							"$ref": "schema:///schema/rest2soap/greeting"
 						}
@@ -40,7 +31,7 @@
 						}
 					}
 				},
-				"summary": "Greet a user",
+				"summary": "Result",
 				"tags": [
 					"helloworld"
 				]
